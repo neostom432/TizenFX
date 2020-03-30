@@ -563,5 +563,41 @@ namespace Tizen.NUI
             child.Measure( childWidthMeasureSpec, childHeightMeasureSpec );
 
         }
+
+
+        /// <summary>
+        /// [Draft] RecycleData class providing struct for recycling list item.
+        /// </summary>
+        public struct RecycleData
+        {
+            public RecycleData(View item, int dataIndex)
+            {
+                Item = item;
+                DataIndex = dataIndex;
+            }
+
+            /// <summary>
+            /// [Draft] The View that this RecycleData has been assigned to.
+            /// </summary>
+            public View Item { get; set; }
+
+            /// <summary>
+            /// [Draft] The index that this RecycleData has been assigned to.
+            /// </summary>
+            public int DataIndex { get; set; }
+        }
+
+
+
+        /// <summary>
+        /// Recycle children by current scrolling position
+        /// </summary>
+        /// <param name="scrollPosition">Current scrolling position</param>
+        /// <param name="spareItemCount">This amount of children always will be at front and back for Recycling</param>
+        /// <returns>a list of RecycleData which should be re-binded by new data.</returns>
+        public virtual List<RecycleData> RecycleItemByCurrentPosition(Position scrollPosition, int spareItemCount)
+        {
+            return null;
+        }
     }
 }
