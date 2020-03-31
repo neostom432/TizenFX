@@ -24,6 +24,13 @@ namespace Tizen.NUI.Components
             {
                 
             }
+
+            public int DataIndex{get;set;}=0;
+
+            protected override bool OnControlStateChanged(ControlStates currentState)
+            {
+                return false;
+            }
         }
 
         public class ListAdapter
@@ -88,6 +95,7 @@ namespace Tizen.NUI.Components
             set
             {
                 mAdapter = value;
+                mAdapter.OnDataChanged += OnAdapterDataChanged;
                 InitializeChild();
             }
         }
@@ -115,7 +123,7 @@ namespace Tizen.NUI.Components
         public int SpareItemCount { get; set; } = 5;
         private int mTotalItemCount = 0;
 
-         private void InitializeChild()
+        private void InitializeChild()
         {
             mListItemSize = mAdapter.CreateListItem().Size;
             if(ScrollingDirection == Direction.Horizontal)
@@ -132,6 +140,7 @@ namespace Tizen.NUI.Components
             for(int i = 0; i< mTotalItemCount && i < mAdapter.Data.Count; i++)
             {
                 ListItem item = mAdapter.CreateListItem();
+                item.DataIndex = i;
                 item.Name ="["+i+"] recycle";
                 mAdapter.BindData(item, i);
                 mContainer.Add(item);
@@ -166,12 +175,27 @@ namespace Tizen.NUI.Components
             }
         }
 
+        private void OnAdapterDataChanged(object source, EventArgs args)
+        {
+            List<LayoutGroup.RecycleData> changedData = new List<LayoutGroup.RecycleData>();
+
+            foreach(ListItem item in mContainer.Children)
+            {
+                changedData.Add( new LayoutGroup.RecycleData( item, item.DataIndex ) );
+            }
+
+            BindData(changedData);
+        }
+
         private void BindData(List<LayoutGroup.RecycleData> changedData)
         {
             foreach(LayoutGroup.RecycleData data in changedData)
             {
                 if(data.DataIndex > -1 && data.DataIndex < mAdapter.Data.Count)
                 {
+                    ListItem item = data.Item as ListItem;
+                    item.DataIndex = data.DataIndex;
+
                     mAdapter.BindData(data.Item as ListItem, data.DataIndex);
                 }
             }
