@@ -876,9 +876,9 @@ namespace Tizen.NUI
         /// <param name="scrollPosition">Current scrolling position</param>
         /// <param name="spareItemCount">This amount of children always will be at front and back for Recycling</param>
         /// <returns>a list of RecycleData which should be re-binded by new data.</returns>
-        public override List<RecycleData> RecycleItemByCurrentPosition(Position scrollPosition, int spareItemCount)
+        public override List<KeyValuePair<int,View>> RecycleItemByCurrentPosition(Position scrollPosition, int spareItemCount)
         {
-            List<RecycleData> result = new List<RecycleData>();
+            List<KeyValuePair<int,View>> result = new List<KeyValuePair<int,View>>();
 
             float currentScrollPosition = LinearOrientation == Orientation.Horizontal?scrollPosition.X:scrollPosition.Y;
             float prevScrollPosition = LinearOrientation == Orientation.Horizontal?mPrevScrollPosition.X:mPrevScrollPosition.Y;
@@ -894,10 +894,10 @@ namespace Tizen.NUI
                 if(firstVisibleItemPosition<Math.Abs(currentScrollPosition))
                 {
                     // Too many item is in front!!! move first item to back!!!!
-                    RecycleData data = new RecycleData(Owner.Children[0],mPrevFirstDataIndex + Owner.Children.Count);
+                    KeyValuePair<int,View> data = new KeyValuePair<int,View>(mPrevFirstDataIndex + Owner.Children.Count, Owner.Children[0]);
                     mPrevFirstDataIndex += 1;
 
-                    data.Item.SiblingOrder = Owner.Children.Count-1;
+                    data.Value.SiblingOrder = Owner.Children.Count-1;
                     mRecycleMargin += itemSize;
                     result.Add(data);
                 }
@@ -906,10 +906,10 @@ namespace Tizen.NUI
             {
                 if(firstVisibleItemPosition>Math.Abs(currentScrollPosition)+itemSize)
                 {
-                    RecycleData data = new RecycleData(Owner.Children[Owner.Children.Count - 1], mPrevFirstDataIndex - 1);
+                    KeyValuePair<int,View> data = new KeyValuePair<int,View>(mPrevFirstDataIndex - 1, Owner.Children[Owner.Children.Count - 1]);
                     mPrevFirstDataIndex -= 1;
 
-                    data.Item.SiblingOrder = 0;
+                    data.Value.SiblingOrder = 0;
                     mRecycleMargin -= itemSize;
                     result.Add(data);
                 }

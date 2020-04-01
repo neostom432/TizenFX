@@ -595,7 +595,7 @@ namespace Tizen.NUI
         /// <param name="scrollPosition">Current scrolling position</param>
         /// <param name="spareItemCount">This amount of children always will be at front and back for Recycling</param>
         /// <returns>a list of RecycleData which should be re-binded by new data.</returns>
-        public virtual List<RecycleData> RecycleItemByCurrentPosition(Position scrollPosition, int spareItemCount)
+        public virtual List<KeyValuePair<int,View>> RecycleItemByCurrentPosition(Position scrollPosition, int spareItemCount)
         {
             return null;
         }

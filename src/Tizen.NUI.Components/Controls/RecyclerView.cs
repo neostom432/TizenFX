@@ -12,15 +12,15 @@ namespace Tizen.NUI.Components
     /// </summary>
     /// This may be public opened in tizen_6.0 after ACR done. Before ACR, need to be hidden as inhouse API.
     [EditorBrowsable(EditorBrowsableState.Never)]
-    public class RecyclerList : ScrollableBase
+    public class RecyclerView : ScrollableBase
     {
-        private ListAdapter mAdapter;
+        private Adapter mAdapter;
         private View mContainer;
         private Size mListItemSize;
 
-        public class ListItem : Control
+        public class Item : Control
         {
-            public ListItem()
+            public Item()
             {
                 
             }
@@ -33,19 +33,19 @@ namespace Tizen.NUI.Components
             }
         }
 
-        public class ListAdapter
+        public class Adapter
         {
             private List<object> mData = new List<object>();
-            public ListAdapter()
+            public Adapter()
             {
             }
 
-            public virtual ListItem CreateListItem()
+            public virtual Item CreateItem()
             {
-                return new ListItem();
+                return new Item();
             }
 
-            public virtual void BindData(ListItem item, int index)
+            public virtual void BindData(Item item, int index)
             {
 
             }
@@ -71,9 +71,9 @@ namespace Tizen.NUI.Components
             
         }
 
-        public RecyclerList()
+        public RecyclerView()
         {
-            Name = "[RecyclerList]";
+            Name = "[RecyclerView]";
             mContainer = new View()
             {
                 WidthSpecification = ScrollingDirection == Direction.Vertical? LayoutParamPolicies.MatchParent:LayoutParamPolicies.WrapContent,
@@ -87,7 +87,7 @@ namespace Tizen.NUI.Components
             ScrollEvent += OnScroll;
         }
 
-        public ListAdapter Adapter{
+        public Adapter RecyclerAdapter{
             get
             {
                 return mAdapter;
@@ -125,7 +125,7 @@ namespace Tizen.NUI.Components
 
         private void InitializeChild()
         {
-            mListItemSize = mAdapter.CreateListItem().Size;
+            mListItemSize = mAdapter.CreateItem().Size;
             if(ScrollingDirection == Direction.Horizontal)
             {
                 mContainer.WidthSpecification = (int)(mListItemSize.Width * mAdapter.Data.Count);
@@ -139,7 +139,7 @@ namespace Tizen.NUI.Components
 
             for(int i = 0; i< mTotalItemCount && i < mAdapter.Data.Count; i++)
             {
-                ListItem item = mAdapter.CreateListItem();
+                Item item = mAdapter.CreateItem();
                 item.DataIndex = i;
                 item.Name ="["+i+"] recycle";
                 mAdapter.BindData(item, i);
@@ -167,7 +167,7 @@ namespace Tizen.NUI.Components
         {
             LayoutGroup containerLayout = mContainer.Layout as LayoutGroup;
 
-            List<LayoutGroup.RecycleData> changedData = containerLayout.RecycleItemByCurrentPosition(args.Position, SpareItemCount);
+            List<KeyValuePair<int,View>> changedData = containerLayout.RecycleItemByCurrentPosition(args.Position, SpareItemCount);
 
             if(changedData.Count > 0)
             {
@@ -177,26 +177,26 @@ namespace Tizen.NUI.Components
 
         private void OnAdapterDataChanged(object source, EventArgs args)
         {
-            List<LayoutGroup.RecycleData> changedData = new List<LayoutGroup.RecycleData>();
+            List<KeyValuePair<int,View>> changedData = new List<KeyValuePair<int,View>>();
 
-            foreach(ListItem item in mContainer.Children)
+            foreach(Item item in mContainer.Children)
             {
-                changedData.Add( new LayoutGroup.RecycleData( item, item.DataIndex ) );
+                changedData.Add( new KeyValuePair<int,View>( item.DataIndex,item ) );
             }
 
             BindData(changedData);
         }
 
-        private void BindData(List<LayoutGroup.RecycleData> changedData)
+        private void BindData(List<KeyValuePair<int,View>> changedData)
         {
-            foreach(LayoutGroup.RecycleData data in changedData)
+            foreach(KeyValuePair<int,View> data in changedData)
             {
-                if(data.DataIndex > -1 && data.DataIndex < mAdapter.Data.Count)
+                if(data.Key > -1 && data.Key < mAdapter.Data.Count)
                 {
-                    ListItem item = data.Item as ListItem;
-                    item.DataIndex = data.DataIndex;
+                    Item item = data.Value as Item;
+                    item.DataIndex = data.Key;
 
-                    mAdapter.BindData(data.Item as ListItem, data.DataIndex);
+                    mAdapter.BindData(data.Value as Item, data.Key);
                 }
             }
         }
