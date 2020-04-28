@@ -17,8 +17,8 @@ namespace Tizen.NUI.Wearable
     {
         private ListAdapter mAdapter;
         private View mContainer;
-        protected LayoutManager mLayoutManager;
-        private int mTotalItemCount = 15;
+        protected FishEyeLayoutManager mLayoutManager;
+        private int mTotalItemCount = 50;
 
         public ListView()
         {
@@ -35,9 +35,7 @@ namespace Tizen.NUI.Wearable
                 PositionUsesPivotPoint = true,
                 ParentOrigin = Tizen.NUI.ParentOrigin.Center,
                 PivotPoint = ScrollingDirection == Direction.Vertical?Tizen.NUI.PivotPoint.TopCenter:Tizen.NUI.PivotPoint.CenterLeft,
-                BackgroundColor = new Color("#000000"),
             };
-            BackgroundColor = new Color("#000000");
 
             Add(mContainer);
             ScrollEvent += OnScroll;
@@ -84,13 +82,14 @@ namespace Tizen.NUI.Wearable
                 {
                     mAdapter.BindData(item);
                 }
-
                 mContainer.Add(item);
             }
 
             mLayoutManager = new FishEyeLayoutManager(ItemSize,mContainer);
-            // mLayoutManager = new LinearLayoutManager(ItemSize,mContainer);
+            mContainer.Size = new Size(mContainer.Size.Width,mLayoutManager.StepSize*(mAdapter.Data.Count-1));
 
+            ListItem focusedItem = mContainer.Children[0] as ListItem;
+            focusedItem.OnFocusGained();
         }
 
         private void OnScroll(object source, ScrollableBase.ScrollEventArgs args)
@@ -135,18 +134,14 @@ namespace Tizen.NUI.Wearable
 
         private void OnAnimationEnd(object source, ScrollableBase.ScrollEventArgs args)
         {
+            Tizen.Log.Error("NUI","ANIMATION ENDED  =================  "+(args.Position.Y)+"\n");
+
             FishEyeLayoutManager layoutManager = mLayoutManager as FishEyeLayoutManager;
 
             if(layoutManager != null)
             {
-                foreach(ListItem item in mContainer.Children)
-                {
-                    if(item.DataIndex == layoutManager.CurrentFocusedIndex)
-                    {
-                        item.ControlState = ControlStates.Focused;
-                        break;
-                    }
-                }
+                ListItem focusedItem = mContainer.Children[layoutManager.FocusedIndex] as ListItem;
+                focusedItem.OnFocusGained();
             }
         }
 
@@ -156,20 +151,9 @@ namespace Tizen.NUI.Wearable
 
             if(layoutManager != null)
             {
-                foreach(ListItem item in mContainer.Children)
-                {
-                    if(item.DataIndex == layoutManager.CurrentFocusedIndex)
-                    {
-                        item.ControlState = ControlStates.Normal;
-                        break;
-                    }
-                }
+                ListItem focusedItem = mContainer.Children[layoutManager.FocusedIndex] as ListItem;
+                focusedItem.OnFocusLost();
             }
-        }
-
-        protected override bool OnControlStateChanged(ControlStates previousState, Touch touchInfo)
-        {
-            return false;
         }
     }
 }

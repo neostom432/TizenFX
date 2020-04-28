@@ -746,6 +746,14 @@ namespace Tizen.NUI.BaseComponents
             }
         }
 
+        public Size CurrentSizeFloat
+        {
+            get
+            {
+                return GetCurrentSizeFloat();
+            }
+        }
+
         /// <summary>
         /// Retrieves and sets the view's opacity.<br />
         /// </summary>

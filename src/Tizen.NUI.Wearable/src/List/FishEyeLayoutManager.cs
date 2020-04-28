@@ -12,8 +12,14 @@ namespace Tizen.NUI.Wearable
     public class FishEyeLayoutManager : LayoutManager
     {
         public int CurrentFocusedIndex{get;set;} = 0;
-        private int FocusedIndex{get;set;} = 0;
-        private float StepSize = 0.0f;
+        public int FocusedIndex{get;set;} = 0;
+        public float StepSize{
+            get
+            {
+                return mStepSize;
+            }
+        }
+        private float mStepSize = 0.0f;
         private List<PropertyNotification> notifications = new List<PropertyNotification>();
         public FishEyeLayoutManager(Size itemSize, View container)
         {
@@ -21,14 +27,11 @@ namespace Tizen.NUI.Wearable
             Container = container;
             Layout(0.0f);
 
-            StepSize = Container.Children[0].SizeHeight/2.0f + Container.Children[1].SizeHeight*Container.Children[1].Scale.X/2.0f;
-            Container.SizeHeight = StepSize*49;
-
-            Tizen.Log.Error("NUI","STEPSIZE : "+StepSize+" Container.SizeHeight : "+Container.SizeHeight+" \n");
+            mStepSize = Container.Children[0].Size.Height/2.0f + Container.Children[1].Size.Height*Container.Children[1].Scale.X/2.0f;
 
             foreach(ListItem item in Container.Children)
             {
-                PropertyNotification noti = item.AddPropertyNotification("size",PropertyCondition.Step(1.0f));
+                PropertyNotification noti = item.AddPropertyNotification("size",PropertyCondition.Step(0.1f));
                 noti.Notified += (object source, PropertyNotification.NotifyEventArgs args) =>
                 {
                     Layout(mPrevScrollPosition);
@@ -38,74 +41,109 @@ namespace Tizen.NUI.Wearable
             }
         }
 
-        private float FindCandidatePosition(float startPosition)
+        private float FindCandidatePosition(float startPosition, float scrollPosition, bool isBack)
         {
-            float result = 0.0f;
-            float itemSize = LayoutOrientation == Orientation.Horizontal?ItemSize.Width:ItemSize.Height;
-            float maximumPosition = startPosition + itemSize;
+            double center = Math.Abs(scrollPosition);
+            double yIntercept = (startPosition - center);
+            double result = isBack?center+180.0f:center-180.0f;
 
-            // it should be updated to binary search
-            for(float i = startPosition ; i < maximumPosition ; i++)
-            {
-                float scaleFactor = calculateScaleFactor(i);
-                float halfOfScaledItemSize = itemSize*scaleFactor*0.5f;
+            double newFactor = Math.Pow(180,2) / calculateXFactor(0);
 
-                if(halfOfScaledItemSize < i - startPosition)
-                {
-                    result = i;
+            double angle = ItemSize.Height / ItemSize.Width;
+            double A = angle;
+            double B = yIntercept;
+            double D = Math.Sqrt(Math.Pow((180*333),2)/(Math.Pow(333,2)-Math.Pow(153,2)));
+            double E = 333.0;
+            double F = -153.0;
+            double F2 = 153.0;
 
-                    break;
-                }
-            }
+            double a = Math.Pow(E,2) + Math.Pow(A*D,2);
+            double b = -(B*Math.Pow(E,2)+F*Math.Pow(A*D,2));
+            double c = Math.Pow(B*E,2) + Math.Pow(A*D*F,2) - Math.Pow(A*D*E,2);
+            double b2 = -(B*Math.Pow(E,2)+F2*Math.Pow(A*D,2));
+            double c2 = Math.Pow(B*E,2) + Math.Pow(A*D*F2,2) - Math.Pow(A*D*E,2);
 
-            return result;
+            double result1 = (-b+Math.Sqrt((Math.Pow(b,2)-a*c)))/a;
+            double result2 = (-b-Math.Sqrt((Math.Pow(b,2)-a*c)))/a;
+            double result3 = (-b2+Math.Sqrt((Math.Pow(b2,2)-a*c2)))/a;
+            double result4 = (-b2-Math.Sqrt((Math.Pow(b2,2)-a*c2)))/a;
+
+            result = isBack?result1:result4;
+            return (float) (center + result);
         }
 
         protected override void Layout(float scrollPosition)
         {
-            Tizen.Log.Error("NUI","LAYOUT START =================\n");
+            // Tizen.Log.Error("NUI","LAYOUT START =================\n");
+
             ListItem centerItem = Container.Children[FocusedIndex] as ListItem;
             float centerItemPosition = LayoutOrientation == Orientation.Horizontal?centerItem.Position.X:centerItem.Position.Y;
-            float centerItemScale = calculateScaleFactor(centerItemPosition);
-            centerItem.Scale = new Vector3(centerItemScale,centerItemScale,1.0f);
+
+            Vector2 stepRange = new Vector2(-scrollPosition - mStepSize + 1.0f,-scrollPosition + mStepSize - 1.0f);
+
+            if( mStepSize != 0 && centerItemPosition <= stepRange.X)
+            {
+                Tizen.Log.Error("NUI","[BF]Change CI "+FocusedIndex+"[DI:"+centerItem.DataIndex+"]  : CP "+centerItemPosition+" | range ("+stepRange.X+" ~ "+stepRange.Y+")\n");
+                FocusedIndex = Math.Min(Container.Children.Count-1,FocusedIndex+1);
+                centerItem = Container.Children[FocusedIndex] as ListItem;
+
+                int newDataIndex = centerItem.DataIndex;
+                centerItem.Position = new Position(0.0f,Math.Abs(mStepSize*(newDataIndex)));
+                centerItem.Scale = new Vector3(1.0f,1.0f,1.0f);
+                Tizen.Log.Error("NUI","[AF]Change CI "+FocusedIndex+"[DI:"+centerItem.DataIndex+"]  : CP "+centerItem.Position.Y+" | range ("+stepRange.X+" ~ "+stepRange.Y+")\n");
+            }
+            else if(mStepSize != 0 && centerItemPosition >= stepRange.Y)
+            {
+                Tizen.Log.Error("NUI","[BF]Change CI "+FocusedIndex+"[DI:"+centerItem.DataIndex+"]  : CP "+centerItemPosition+" | range ("+stepRange.X+" ~ "+stepRange.Y+")\n");
+                FocusedIndex = Math.Max(0,FocusedIndex-1);
+                centerItem = Container.Children[FocusedIndex] as ListItem;
+
+                int newDataIndex = centerItem.DataIndex;
+                centerItem.Position = new Position(0.0f,Math.Abs(mStepSize*(newDataIndex)));
+                centerItem.Scale = new Vector3(1.0f,1.0f,1.0f);
+                Tizen.Log.Error("NUI","[AF]Change CI "+FocusedIndex+"[DI:"+centerItem.DataIndex+"]  : CP "+centerItem.Position.Y+" | range ("+stepRange.X+" ~ "+stepRange.Y+")\n");
+            }
+            else
+            {
+                Tizen.Log.Error("NUI","["+scrollPosition+"]No Change CI "+FocusedIndex+"[DI:"+centerItem.DataIndex+"]  : CP "+centerItemPosition+" | range ("+stepRange.X+" ~ "+stepRange.Y+")\n");
+                float centerItemScale = calculateScaleFactor(centerItemPosition, scrollPosition);
+                centerItem.Scale = new Vector3(centerItemScale,centerItemScale,1.0f);
+            }
 
             ListItem prevItem = centerItem;
             bool visible = true;
 
-            Tizen.Log.Error("NUI","FocusedIndex : "+FocusedIndex+" scrollPosition : "+scrollPosition+" ==== \n");
+            // Tizen.Log.Error("NUI","FocusedIndex : "+FocusedIndex+" scrollPosition : "+scrollPosition+" ==== \n");
 
             //Center front
             for(int i = FocusedIndex - 1; i > -1; i--)
             {
+                // Tizen.Log.Error("NUI","Upper\n");
                 ListItem target = Container.Children[i] as ListItem;
 
                 if(visible)
                 {
                     float prevItemPosition = LayoutOrientation == Orientation.Horizontal?prevItem.Position.X:prevItem.Position.Y;
                     float prevItemSize = (LayoutOrientation == Orientation.Horizontal?prevItem.Size.Width:prevItem.Size.Height);
-                    float prevItemCurrentSize = (LayoutOrientation == Orientation.Horizontal?prevItem.CurrentSize.Width:prevItem.CurrentSize.Height);
-                    prevItemSize = Math.Max(prevItemSize,prevItemCurrentSize);
-                    Tizen.Log.Error("NUI","["+i+"]Calculate from ["+prevItem.DataIndex+"] : ["+prevItemSize+"]\n");
-
-                    prevItemSize *= prevItem.Scale.X;
+                    float prevItemCurrentSize = (LayoutOrientation == Orientation.Horizontal?prevItem.CurrentSizeFloat.Width:prevItem.CurrentSizeFloat.Height);
+                    prevItemSize = prevItemCurrentSize == 0 ? prevItemSize : prevItemCurrentSize;
+                    prevItemSize = prevItemSize*prevItem.Scale.X;
 
                     float startPosition = prevItemPosition - prevItemSize / 2.0f;
-                    float minimumPosition = startPosition - prevItemSize;
                     float candidatePosition = Math.Abs(scrollPosition) - 180;
+                    float scaleFactor = 0.0f;
 
-                    for(float j = startPosition ; j > minimumPosition ; j--)
+                    if(startPosition > Math.Abs(scrollPosition) - 180)
                     {
-                        float itemSize = LayoutOrientation == Orientation.Horizontal?ItemSize.Width:ItemSize.Height;
-                        float halfOfScaledItemSize = itemSize*calculateScaleFactor(j)*0.5f;
-
-                        if(halfOfScaledItemSize < Math.Abs(j - startPosition))
-                        {
-                            candidatePosition = j;
-                            break;
-                        }
+                        candidatePosition = FindCandidatePosition(startPosition, scrollPosition, false);
+                        float candidateHeight = Math.Abs(candidatePosition - startPosition) * 2.0f;
+                        float candidateScaleFactor = candidateHeight / ItemSize.Height;
+                        scaleFactor = calculateScaleFactor(candidatePosition, scrollPosition);
                     }
 
-                    float scaleFactor = calculateScaleFactor(candidatePosition);
+                    scaleFactor = calculateScaleFactor(candidatePosition, scrollPosition);
+
+                    // Tizen.Log.Error("NUI","["+i+"] StartPosition ["+startPosition+"] | Candidate ["+candidatePosition+"] | ScaleFactor ["+scaleFactor+"] \n");
 
                     target.Scale = new Vector3(scaleFactor,scaleFactor,1.0f);
 
@@ -129,35 +167,30 @@ namespace Tizen.NUI.Wearable
             //Center back
             for(int i = FocusedIndex + 1; i < Container.Children.Count; i++)
             {
+                // Tizen.Log.Error("NUI","Below\n");
                 ListItem target = Container.Children[i] as ListItem;
 
                 if(visible)
                 {
                     float prevItemPosition = LayoutOrientation == Orientation.Horizontal?prevItem.Position.X:prevItem.Position.Y;
                     float prevItemSize = (LayoutOrientation == Orientation.Horizontal?prevItem.Size.Width:prevItem.Size.Height);
-                    float prevItemCurrentSize = (LayoutOrientation == Orientation.Horizontal?prevItem.CurrentSize.Width:prevItem.CurrentSize.Height);
-                    prevItemSize = Math.Max(prevItemSize,prevItemCurrentSize);
-
-                    Tizen.Log.Error("NUI","["+i+"]Calculate from ["+prevItem.DataIndex+"] : ["+prevItemSize+"]\n");
-                    prevItemSize *= prevItem.Scale.X;
+                    float prevItemCurrentSize = (LayoutOrientation == Orientation.Horizontal?prevItem.CurrentSizeFloat.Width:prevItem.CurrentSizeFloat.Height);
+                    prevItemSize = prevItemCurrentSize == 0 ? prevItemSize : prevItemCurrentSize;
+                    prevItemSize = prevItemSize*prevItem.Scale.X;
 
                     float startPosition = prevItemPosition + prevItemSize / 2.0f;
-                    float maximumPosition = startPosition + prevItemSize;
                     float candidatePosition = Math.Abs(scrollPosition) + 180;
+                    float scaleFactor = 0.0f;
 
-                    for(float j = startPosition ; j < maximumPosition ; j++)
+                    if(startPosition < Math.Abs(scrollPosition) + 180)
                     {
-                        float itemSize = LayoutOrientation == Orientation.Horizontal?ItemSize.Width:ItemSize.Height;
-                        float halfOfScaledItemSize = itemSize*calculateScaleFactor(j)*0.5f;
-
-                        if(halfOfScaledItemSize < Math.Abs(j - startPosition))
-                        {
-                            candidatePosition = j;
-                            break;
-                        }
+                        candidatePosition = FindCandidatePosition(startPosition, scrollPosition, true);
+                        float candidateHeight = Math.Abs(candidatePosition - startPosition) * 2.0f;
+                        float candidateScaleFactor = candidateHeight / ItemSize.Height;
+                        scaleFactor = calculateScaleFactor(candidatePosition, scrollPosition);
                     }
 
-                    float scaleFactor = calculateScaleFactor(candidatePosition);
+                    // Tizen.Log.Error("NUI","["+i+"] StartPosition ["+startPosition+"] | Candidate ["+candidatePosition+"] | ScaleFactor ["+scaleFactor+"] \n");
 
                     target.Scale = new Vector3(scaleFactor,scaleFactor,1.0f);
 
@@ -175,24 +208,7 @@ namespace Tizen.NUI.Wearable
                 }
             }
 
-            if(centerItemPosition < -scrollPosition - 10)
-            {
-                FocusedIndex = Math.Min(Container.Children.Count-1,FocusedIndex+1);
-                // ListItem newCenterItem = Container.Children[FocusedIndex] as ListItem;
-                // newCenterItem.Position = new Position(0.0f,Math.Abs(StepSize*(FocusedIndex)));
-                // newCenterItem.Scale = new Vector3(1.0f,1.0f,1.0f);
-                // Tizen.Log.Error("NUI","Change CI "+FocusedIndex+"[DI:"+newCenterItem.DataIndex+"]\n");
-            }
-            else if(centerItemPosition > -scrollPosition + 10)
-            {
-                FocusedIndex = Math.Max(0,FocusedIndex-1);
-                // ListItem newCenterItem = Container.Children[FocusedIndex] as ListItem;
-                // newCenterItem.Position = new Position(0.0f,Math.Abs(StepSize*(FocusedIndex)));
-                // newCenterItem.Scale = new Vector3(1.0f,1.0f,1.0f);
-                // Tizen.Log.Error("NUI","Change CI "+FocusedIndex+"[DI:"+newCenterItem.DataIndex+"]\n");
-            }
-
-            Tizen.Log.Error("NUI","LAYOUT END =================\n");
+            // Tizen.Log.Error("NUI","LAYOUT END =================\n");
         }
 
         private double calculateXFactor(double y)
@@ -204,9 +220,9 @@ namespace Tizen.NUI.Wearable
             return Math.Sqrt(factor1-(factor1/factor2*factor3));
         }
 
-        private float calculateScaleFactor(float position)
+        private float calculateScaleFactor(float position, float scrollPosition)
         {
-            float origin = Math.Abs(mPrevScrollPosition);
+            float origin = Math.Abs(scrollPosition);
             float diff = position - origin;
             
             diff = Math.Max(diff,-180);
@@ -215,13 +231,9 @@ namespace Tizen.NUI.Wearable
 
             float result = (float)(calculateXFactor(diff)/calculateXFactor(0));
 
-            if(result < 0.001f)
+            if(result < 0.3f)
             {
                 result = 0.0f;
-            }
-            else if(result > 0.99f )
-            {
-                result = 1.0f;
             }
 
             return result;
@@ -231,66 +243,64 @@ namespace Tizen.NUI.Wearable
         {
             Layout(scrollPosition);
 
-            List<ListItem> result = new List<ListItem>();
-
-            bool checkFront = mPrevScrollPosition-scrollPosition>0?true:false;
-
-            if(checkFront)
-            {
-                if(FocusedIndex > 6)
-                {
-                    Tizen.Log.Error("NUI","======\n");
-                    Tizen.Log.Error("NUI","RF CI "+FocusedIndex+"\n");
-
-                    //Too many Items in fornt
-                    ListItem target = Container.Children[0] as ListItem;
-                    target.SiblingOrder = Container.Children.Count - 1;
-                    target.DataIndex = target.DataIndex + Container.Children.Count;
-
-                    //Need to bind again
-                    result.Add(target);
-
-                    //All index will be changed;
-                    FocusedIndex--;
-                    Tizen.Log.Error("NUI","NEW CI "+FocusedIndex+"\n");
-                }
-            }
-            else
-            {
-                if(FocusedIndex < Container.Children.Count - 7)
-                {
-                    Tizen.Log.Error("NUI","======\n");
-                    Tizen.Log.Error("NUI","RB CI "+FocusedIndex+"\n");
-
-                    //Too many Items in back
-                    ListItem target = Container.Children[Container.Children.Count -1] as ListItem;
-                    target.SiblingOrder = 0;
-                    target.DataIndex = target.DataIndex - Container.Children.Count;
-
-                    //Need to bind again
-                    result.Add(target);
-
-                    //All index will be changed;
-                    FocusedIndex++;
-
-                    Tizen.Log.Error("NUI","NEW CI "+FocusedIndex+"\n");
-                }
-            }
+            List<ListItem> result = Recycle(scrollPosition);
 
             mPrevScrollPosition = scrollPosition;
 
             return result;
         }
 
+        private List<ListItem> Recycle(float scrollPosition)
+        {
+
+            List<ListItem> result = new List<ListItem>();
+
+            bool isBack = scrollPosition - mPrevScrollPosition < 0;
+
+            int previousFocusIndex = FocusedIndex;
+
+            if( !isBack && FocusedIndex < 6)
+            {
+                ListItem target = Container.Children[Container.Children.Count -1] as ListItem;
+
+                int previousSiblingOrder = target.SiblingOrder;
+                target.SiblingOrder = 0;
+                target.DataIndex = target.DataIndex - Container.Children.Count;
+                target.Position = new Position(0,Math.Abs(scrollPosition)-360);
+                target.Scale = new Vector3(0,0,0);
+
+                result.Add(target);
+
+                FocusedIndex++;
+            }
+            else if( isBack && FocusedIndex > 8)
+            {
+                ListItem target = Container.Children[0] as ListItem;
+
+                int previousSiblingOrder = target.SiblingOrder;
+                target.SiblingOrder = Container.Children.Count - 1;
+                target.DataIndex = target.DataIndex + Container.Children.Count;
+                target.Position = new Position(0,Math.Abs(scrollPosition)+360);
+                target.Scale = new Vector3(0,0,0);
+
+                result.Add(target);
+
+                FocusedIndex--;
+            }
+
+            return result;
+        }
+
         public override float CalculateCandidateScrollPosition(float position)
         {
-            int value = (int)(Math.Abs(position) / StepSize);
-            float remain = Math.Abs(position) % StepSize;
+            int value = (int)(Math.Abs(position) / mStepSize);
+            float remain = Math.Abs(position) % mStepSize;
 
-            int newValue = remain > StepSize / 2.0f?value+1:value;
+            int newValue = remain > mStepSize / 2.0f?value+1:value;
 
             CurrentFocusedIndex = newValue;
-            return -newValue * StepSize;
+            Tizen.Log.Error("NUI","SCROLL CANDIDATE  =================  "+(-newValue*mStepSize)+"\n");
+            return -newValue * mStepSize;
         }
     }
 }
