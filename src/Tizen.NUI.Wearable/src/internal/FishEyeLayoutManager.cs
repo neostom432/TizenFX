@@ -1,15 +1,28 @@
+/* Copyright (c) 2020 Samsung Electronics Co., Ltd.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ */
 using System;
-using Tizen.NUI.BaseComponents;
 using Tizen.NUI.Components;
-
 using System.Collections.Generic;
-using System.ComponentModel;
-
 
 namespace Tizen.NUI.Wearable
 {
-    [EditorBrowsable(EditorBrowsableState.Never)]
-    public class FishEyeLayoutManager : LayoutManager
+    /// <summary>
+    /// [Draft] This class implements a fish eye layout
+    /// </summary>
+    internal class FishEyeLayoutManager : LayoutManager
     {
         public int CurrentFocusedIndex { get; set; } = 0;
         public int FocusedIndex { get; set; } = 0;
@@ -55,7 +68,7 @@ namespace Tizen.NUI.Wearable
 
         public override void Layout(float scrollPosition)
         {
-            ListItem centerItem = Container.Children[FocusedIndex] as ListItem;
+            RecycleItem centerItem = Container.Children[FocusedIndex] as RecycleItem;
             float centerItemPosition = LayoutOrientation == Orientation.Horizontal ? centerItem.Position.X : centerItem.Position.Y;
 
             Vector2 stepRange = new Vector2(-scrollPosition - mStepSize + 1.0f, -scrollPosition + mStepSize - 1.0f);
@@ -64,14 +77,14 @@ namespace Tizen.NUI.Wearable
             if (mStepSize != 0 && centerItemPosition <= stepRange.X)
             {
                 FocusedIndex = Math.Min(Container.Children.Count - 1, FocusedIndex + 1);
-                centerItem = Container.Children[FocusedIndex] as ListItem;
+                centerItem = Container.Children[FocusedIndex] as RecycleItem;
                 centerItem.Position = new Position(0.0f, Math.Abs(mStepSize * (centerItem.DataIndex)));
                 centerItem.Scale = new Vector3(1.0f, 1.0f, 1.0f);
             }
             else if (mStepSize != 0 && centerItemPosition >= stepRange.Y)
             {
                 FocusedIndex = Math.Max(0, FocusedIndex - 1);
-                centerItem = Container.Children[FocusedIndex] as ListItem;
+                centerItem = Container.Children[FocusedIndex] as RecycleItem;
                 centerItem.Position = new Position(0.0f, Math.Abs(mStepSize * (centerItem.DataIndex)));
                 centerItem.Scale = new Vector3(1.0f, 1.0f, 1.0f);
             }
@@ -81,12 +94,12 @@ namespace Tizen.NUI.Wearable
                 centerItem.Scale = new Vector3(centerItemScale, centerItemScale, 1.0f);
             }
 
-            ListItem prevItem = centerItem;
+            RecycleItem prevItem = centerItem;
 
             // Front of center item
             for (int i = FocusedIndex - 1; i > -1; i--)
             {
-                ListItem target = Container.Children[i] as ListItem;
+                RecycleItem target = Container.Children[i] as RecycleItem;
 
                 float prevItemPosition = LayoutOrientation == Orientation.Horizontal ? prevItem.Position.X : prevItem.Position.Y;
                 float prevItemSize = (LayoutOrientation == Orientation.Horizontal ? prevItem.Size.Width : prevItem.Size.Height);
@@ -120,7 +133,7 @@ namespace Tizen.NUI.Wearable
             // Back of center item
             for (int i = FocusedIndex + 1; i < Container.Children.Count; i++)
             {
-                ListItem target = Container.Children[i] as ListItem;
+                RecycleItem target = Container.Children[i] as RecycleItem;
 
                 float prevItemPosition = LayoutOrientation == Orientation.Horizontal ? prevItem.Position.X : prevItem.Position.Y;
                 float prevItemSize = (LayoutOrientation == Orientation.Horizontal ? prevItem.Size.Width : prevItem.Size.Height);
@@ -149,7 +162,7 @@ namespace Tizen.NUI.Wearable
                 }
             }
 
-            if(mStepSize == 0)
+            if (mStepSize == 0)
             {
                 if (LayoutOrientation == Orientation.Horizontal)
                 {
@@ -163,9 +176,9 @@ namespace Tizen.NUI.Wearable
             }
         }
 
-        public override List<ListItem> Recycle(float scrollPosition)
+        public override List<RecycleItem> Recycle(float scrollPosition)
         {
-            List<ListItem> result = new List<ListItem>();
+            List<RecycleItem> result = new List<RecycleItem>();
 
             bool isBack = scrollPosition - mPrevScrollPosition < 0;
 
@@ -173,7 +186,7 @@ namespace Tizen.NUI.Wearable
 
             if (!isBack && FocusedIndex < 6)
             {
-                ListItem target = Container.Children[Container.Children.Count - 1] as ListItem;
+                RecycleItem target = Container.Children[Container.Children.Count - 1] as RecycleItem;
 
                 int previousSiblingOrder = target.SiblingOrder;
                 target.SiblingOrder = 0;
@@ -187,7 +200,7 @@ namespace Tizen.NUI.Wearable
             }
             else if (isBack && FocusedIndex > 8)
             {
-                ListItem target = Container.Children[0] as ListItem;
+                RecycleItem target = Container.Children[0] as RecycleItem;
 
                 int previousSiblingOrder = target.SiblingOrder;
                 target.SiblingOrder = Container.Children.Count - 1;
@@ -227,10 +240,10 @@ namespace Tizen.NUI.Wearable
             return result;
         }
 
-        public override float CalculateCandidateScrollPosition(float position)
+        public override float CalculateCandidateScrollPosition(float scrollPosition)
         {
-            int value = (int)(Math.Abs(position) / mStepSize);
-            float remain = Math.Abs(position) % mStepSize;
+            int value = (int)(Math.Abs(scrollPosition) / mStepSize);
+            float remain = Math.Abs(scrollPosition) % mStepSize;
 
             int newValue = remain > mStepSize / 2.0f ? value + 1 : value;
 
