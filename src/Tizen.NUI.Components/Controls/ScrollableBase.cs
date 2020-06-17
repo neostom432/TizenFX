@@ -752,13 +752,13 @@ namespace Tizen.NUI.Components
                 Debug.WriteLineIf(LayoutDebugScrollableBase, "Horizontal");
 
                 scrollingChildLength = (int)mScrollingChild.Layout.MeasuredWidth.Size.AsRoundedValue();
-                scrollerLength = CurrentSize.Width;
+                scrollerLength = (int)Layout.MeasuredWidth.Size.AsRoundedValue();
             }
             else
             {
                 Debug.WriteLineIf(LayoutDebugScrollableBase, "Vertical");
                 scrollingChildLength = (int)mScrollingChild.Layout.MeasuredHeight.Size.AsRoundedValue();
-                scrollerLength = CurrentSize.Height;
+                scrollerLength = (int)Layout.MeasuredHeight.Size.AsRoundedValue();
             }
 
             Debug.WriteLineIf(LayoutDebugScrollableBase, "ScrollBy maxScrollDistance:" + (scrollingChildLength - scrollerLength) +
